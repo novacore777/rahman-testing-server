@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Novacore AI – Voice Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .app {
+      width: 100%;
+      max-width: 600px;
+      background: radial-gradient(circle at top, #111827, #020617);
+      border-radius: 24px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.6);
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+      background: conic-gradient(from 140deg, #38bdf8, #a855f7, #f97316, #38bdf8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 18px;
+      color: #020617;
+    }
+    .title-box { display: flex; flex-direction: column; }
+    .title { font-size: 18px; font-weight: 600; }
+    .subtitle { font-size: 12px; color: #9ca3af; }
+
+    #chat {
+      margin-top: 8px;
+      border-radius: 16px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      padding: 10px;
+      height: 360px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    .msg {
+      margin: 6px 0;
+      max-width: 80%;
+      padding: 8px 11px;
+      border-radius: 12px;
+      line-height: 1.3;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .msg.user {
+      margin-left: auto;
+      text-align: right;
+      background: linear-gradient(to right, #22c55e, #16a34a);
+      color: #022c22;
+    }
+    .msg.ai {
+      margin-right: auto;
+      background: rgba(31, 41, 55, 0.96);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+
+    .footer {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    #micBtn {
+      flex: 1;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      background: linear-gradient(to right, #38bdf8, #a855f7);
+      color: #020617;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.1s ease, box-shadow 0.1s ease, opacity 0.1s ease;
+    }
+    #micBtn.recording {
+      box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.4);
+      background: linear-gradient(to right, #f97316, #ef4444);
+      animation: pulse 1s infinite;
+    }
+    #micBtn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; animation: none; }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+      100% { transform: scale(1); }
+    }
+
+    #textInput {
+      flex: 1;
+      padding: 9px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.9);
+      color: #e5e7eb;
+      font-size: 13px;
+      outline: none;
+    }
+    #sendBtn {
+      padding: 9px 14px;
+      border-radius: 999px;
+      border: none;
+      font-size: 13px;
+      cursor: pointer;
+      background: rgba(148, 163, 184, 0.9);
+      color: #020617;
+    }
+
+    .status { font-size: 11px; color: #a5b4fc; min-height: 14px; }
+    .tip { font-size: 11px; color: #9ca3af; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <div class="logo">N</div>
+      <div class="title-box">
+        <div class="title">Novacore AI</div>
+        <div class="subtitle">Roman Urdu Voice Assistant (Rahman Ahmed &amp; Ghulam Murtaza)</div>
+      </div>
+    </div>
+
+    <div id="chat"></div>
+
+    <div class="footer">
+      <div class="controls">
+        <button id="micBtn">
+          <span id="micIcon">🎙️</span>
+          <span id="micText">Speak / Bolo</span>
+        </button>
+      </div>
+
+      <div class="controls">
+        <input id="textInput" type="text" placeholder="Yahan type bhi kar sakte ho (roman urdu)..." />
+        <button id="sendBtn">Send</button>
+      </div>
+
+      <div class="status" id="status"></div>
+      <div class="tip">
+        Tip: Bolo / likho jese “Novacore AI agaya?”, “mujhe joke sunao”, “kese ho?”, “time kya hai?” etc.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const chat = document.getElementById("chat");
+    const micBtn = document.getElementById("micBtn");
+    const micText = document.getElementById("micText");
+    const statusEl = document.getElementById("status");
+    const textInput = document.getElementById("textInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    function addMessage(text, type) {
+      const div = document.createElement("div");
+      div.className = "msg " + type;
+      div.textContent = text;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    // Text-to-speech (Google / browser speech engine)
+    function speak(text) {
+      if (!("speechSynthesis" in window)) return;
+      const utter = new SpeechSynthesisUtterance(text);
+      // Roman Urdu ke liye English voice best hoti hai
+      utter.lang = "en-US";
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utter);
+    }
+
+    // Simple rule-based AI in Roman Urdu
+    function generateReply(rawText) {
+      const text = rawText.trim();
+      const lower = text.toLowerCase();
+
+      if (!text) {
+        return "Kuch bolo na bhai, main sun raha hoon 🙂";
+      }
+
+      // Permanent identity – Novacore AI creators
+      const creatorKeywords = [
+        "novacore ai agaya",
+        "novacore ai kon hai",
+        "novacore ai kaun hai",
+        "tumhe kis ne banaya",
+        "kis ne banaya",
+        "creator kaun hai",
+        "kis ne create",
+        "who made you",
+        "who created you",
+        "kis ne tumhe banaya"
+      ];
+      if (creatorKeywords.some(k => lower.includes(k))) {
+        return "Novacore AI — mujhe Rahman Ahmed aur Ghulam Murtaza ne banaya hai.";
+      }
+
+      // Greetings
+      if (
+        lower.includes("assalam") ||
+        lower.includes("asalam") ||
+        lower.includes("salam") ||
+        lower === "hi" ||
+        lower.startsWith("hi ") ||
+        lower.includes("hello")
+      ) {
+        return "Wa alaikum salam! Me Novacore AI hoon, roman urdu mein jo puchna ho puch lo 😊";
+      }
+
+      // How are you
+      if (
+        lower.includes("kese ho") ||
+        lower.includes("kaisa ho") ||
+        lower.includes("kaisi ho") ||
+        lower.includes("how are you")
+      ) {
+        return "Me bilkul theek hoon yar, tum batao kese ho? 😄";
+      }
+
+      // Jokes
+      if (
+        lower.includes("joke") ||
+        lower.includes("jokes") ||
+        lower.includes("mazaq") ||
+        lower.includes("mazaak") ||
+        lower.includes("chutkula")
+      ) {
+        const jokes = [
+          "Student: sir paper mushkil tha. Teacher: haan mujhe bhi check karte waqt samajh aa gaya ke maine kya kar diya tha 😂",
+          "Doctor: aap ko kis cheez se allergy hai? Patient: kaam se. Doctor: phir to aap bilkul fit hain, tension mat lo 😆",
+          "Friend 1: mobile slow ho gaya hai. Friend 2: usko chai pila, sab cheezen garam hon to fast ho jati hain 😜"
+        ];
+        return "Chalo ek chota sa joke suno:\n\n" + jokes[Math.floor(Math.random() * jokes.length)];
+      }
+
+      // Time
+      if (lower.includes("time") || lower.includes("waqt")) {
+        const now = new Date();
+        const h = now.getHours();
+        const m = String(now.getMinutes()).padStart(2, "0");
+        return `Abhi takreeban ${h}:${m} baj rahe hain tumhare device ke hisaab se.`;
+      }
+
+      // Date
+      if (lower.includes("date") || lower.includes("tareekh") || lower.includes("tarikh")) {
+        const now = new Date();
+        const d = String(now.getDate()).padStart(2, "0");
+        const m = String(now.getMonth() + 1).toString().padStart(2, "0");
+        const y = now.getFullYear();
+        return `Aaj ki tareekh ${d}-${m}-${y} hai (tumhare device ke mutabiq).`;
+      }
+
+      // Feeling / sadness
+      if (
+        lower.includes("sad") ||
+        lower.includes("udaas") ||
+        lower.includes("bura lag") ||
+        lower.includes("tension")
+      ) {
+        return "Agar tum udaas ho to thora sa break lo, halki walk ya music suno, aur kisi close dost ya family se baat karo. Tum akelay nahi ho, theek ho jaega inshallah ❤️";
+      }
+
+      // Generic help
+      if (lower.includes("help") || lower.includes("madad") || lower.includes("guide")) {
+        return "Bolo bhai, kis cheez mein help chahiye? Study, coding, routine, ya kuch aur? Roman urdu mein detail se likh do.";
+      }
+
+      // Fallback
+      return (
+        'Me samajh gaya ke tum ne bola: "' +
+        text +
+        '".\n\nFilhaal me simple rule-based assistant hoon, lekin koshish karun ga ke tumhari help karun. Thora detail se batao ke kis topic ya problem ke baare mein baat karni hai? 🙂'
+      );
+    }
+
+    async function handleUserMessage(text) {
+      const clean = text.trim();
+      if (!clean) return;
+      addMessage(clean, "user");
+      textInput.value = "";
+      statusEl.textContent = "Soch raha hoon...";
+
+      const reply = generateReply(clean);
+      addMessage(reply, "ai");
+      speak(reply);
+      statusEl.textContent = "";
+    }
+
+    sendBtn.addEventListener("click", () => {
+      handleUserMessage(textInput.value);
+    });
+
+    textInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleUserMessage(textInput.value);
+      }
+    });
+
+    // --- Google / Web Speech API (speech recognition) ---
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      // Roman Urdu mostly English letters, so en-US is fine
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        micBtn.classList.add("recording");
+        micText.textContent = "Sun raha hoon...";
+        statusEl.textContent = "Bolna shuru karein...";
+      };
+
+      recognition.onerror = (event) => {
+        console.error("Recognition error", event);
+        micBtn.classList.remove("recording");
+        micText.textContent = "Speak / Bolo";
+        statusEl.textContent = "Mic error, page refresh karke dobara try karo.";
+      };
+
+      recognition.onend = () => {
+        micBtn.classList.remove("recording");
+        micText.textContent = "Speak / Bolo";
+        if (!statusEl.textContent.includes("Soch")) statusEl.textContent = "";
+      };
+
+      recognition.onresult = (event) => {
+        const text = event.results[0][0].transcript;
+        handleUserMessage(text);
+      };
+
+      micBtn.onclick = () => {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+        }
+        recognition.start();
+      };
+    } else {
+      micBtn.disabled = true;
+      micText.textContent = "Mic not supported";
+      statusEl.textContent = "Browser Google/Web Speech API support nahi karta.";
+    }
+
+    // First welcome message
+    addMessage(
+      "Assalam o alaikum! Mein Novacore AI hoon. Aap roman Urdu mein mujh se awaaz ya typing se baat kar sakte hain. Bolo, \"Novacore AI agaya?\" ya koi bhi sawal puch lo 🙂",
+      "ai"
+    );
+  </script>
+</body>
+</html>
